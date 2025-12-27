@@ -1,0 +1,1657 @@
+Index: src/main/java/net/engineeringdigest/journalApp/api/response/WeatherResponse.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/api/response/WeatherResponse.java b/src/main/java/net/engineeringdigest/journalApp/api/response/WeatherResponse.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/api/response/WeatherResponse.java
+@@ -0,0 +1,25 @@
++package net.engineeringdigest.journalApp.api.response;
++
++
++import com.fasterxml.jackson.annotation.JsonProperty;
++import lombok.Getter;
++import lombok.Setter;
++
++import java.util.List;
++
++@Getter
++@Setter public class WeatherResponse {
++    private Current current;
++
++    @Getter
++    @Setter
++    public class Current {
++        private int temperature;
++        @JsonProperty("weather_descriptions")
++        private List<String> weatherDescriptions;
++        private int feelslike;
++    }
++
++
++}
++
+Index: src/main/java/net/engineeringdigest/journalApp/cache/AppCache.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/cache/AppCache.java b/src/main/java/net/engineeringdigest/journalApp/cache/AppCache.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/cache/AppCache.java
+@@ -0,0 +1,35 @@
++package net.engineeringdigest.journalApp.cache;
++
++
++import net.engineeringdigest.journalApp.Repository.ConfigJournalAppRepository;
++import net.engineeringdigest.journalApp.entity.ConfigJournalAppEntity;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.stereotype.Component;
++
++import javax.annotation.PostConstruct;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++
++@Component
++public class AppCache {
++
++    public enum keys{
++        WEATHER_API;
++    }
++
++    @Autowired
++    private ConfigJournalAppRepository configJournalAppRepository;
++
++    public Map<String, String> appCache;
++
++    @PostConstruct
++    public void init(){
++        appCache = new HashMap<>();
++        List<ConfigJournalAppEntity> all = configJournalAppRepository.findAll();
++        for (ConfigJournalAppEntity configJournalAppEntity : all) {
++            appCache.put(configJournalAppEntity.getKey(), configJournalAppEntity.getValue());
++        }
++    }
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/config/RedisConfig.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/config/RedisConfig.java b/src/main/java/net/engineeringdigest/journalApp/config/RedisConfig.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/config/RedisConfig.java
+@@ -0,0 +1,24 @@
++package net.engineeringdigest.journalApp.config;
++
++
++import org.springframework.context.annotation.Bean;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.data.redis.connection.RedisConnectionFactory;
++import org.springframework.data.redis.core.RedisTemplate;
++import org.springframework.data.redis.serializer.StringRedisSerializer;
++
++@Configuration
++public class RedisConfig {
++
++    @Bean
++    public RedisTemplate redisTemplate(RedisConnectionFactory redisConnectionFactory) {
++
++        RedisTemplate redisTemplate = new RedisTemplate();
++        redisTemplate.setConnectionFactory(redisConnectionFactory);
++        redisTemplate.setKeySerializer(new StringRedisSerializer());
++        redisTemplate.setValueSerializer(new StringRedisSerializer());
++
++        return redisTemplate;
++    }
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/config/SpringSecurity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/config/SpringSecurity.java b/src/main/java/net/engineeringdigest/journalApp/config/SpringSecurity.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/config/SpringSecurity.java
+@@ -0,0 +1,43 @@
++package net.engineeringdigest.journalApp.config;
++
++import net.engineeringdigest.journalApp.service.UserDetailServiceImpl;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.context.annotation.Configuration;
++import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
++import org.springframework.security.config.annotation.web.builders.HttpSecurity;
++import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
++import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
++import org.springframework.security.config.http.SessionCreationPolicy;
++import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.stereotype.Component;
++
++@Configuration
++@EnableWebSecurity
++public class SpringSecurity extends WebSecurityConfigurerAdapter {
++
++    @Autowired
++    UserDetailServiceImpl userDetailService;
++
++    @Override
++    protected void configure(HttpSecurity http) throws Exception {
++       http.authorizeRequests()
++               .antMatchers("/journal/**","/users/**").authenticated()
++               .antMatchers("/admin/**").hasRole("ADMIN")
++               .anyRequest().permitAll()
++               .and().httpBasic();
++
++       http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and().csrf().disable();
++
++       http.csrf().disable();
++    }
++
++    @Override
++    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
++       auth.userDetailsService(userDetailService).passwordEncoder(passwordEncoder());
++    }
++
++    private PasswordEncoder passwordEncoder() {
++        return new BCryptPasswordEncoder();
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/entity/Users.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/entity/Users.java b/src/main/java/net/engineeringdigest/journalApp/entity/Users.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/entity/Users.java
+@@ -0,0 +1,37 @@
++package net.engineeringdigest.journalApp.entity;
++
++import lombok.*;
++import org.bson.types.ObjectId;
++import org.springframework.data.annotation.Id;
++import org.springframework.data.mongodb.core.index.Indexed;
++import org.springframework.data.mongodb.core.mapping.DBRef;
++import org.springframework.data.mongodb.core.mapping.Document;
++
++import java.time.LocalDateTime;
++import java.util.ArrayList;
++import java.util.List;
++
++@Data
++@NoArgsConstructor
++@AllArgsConstructor
++@Builder
++@Document(collection = "user_entries")
++public class Users {
++
++    @Id
++    private ObjectId id;
++    @Indexed(unique = true)
++    @NonNull
++    private String userName;
++    @NonNull
++    private String password;
++
++    private String email;
++    private boolean sentimentAnalysis;
++
++    @DBRef
++    private List<JournalEntry> journalEntry = new ArrayList<>();
++
++    private List<String> roles;
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/entity/JournalEntry.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/entity/JournalEntry.java b/src/main/java/net/engineeringdigest/journalApp/entity/JournalEntry.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/entity/JournalEntry.java
+@@ -0,0 +1,26 @@
++package net.engineeringdigest.journalApp.entity;
++
++
++import lombok.Data;
++import lombok.NoArgsConstructor;
++import lombok.NonNull;
++import org.bson.types.ObjectId;
++import org.springframework.data.annotation.Id;
++import org.springframework.data.mongodb.core.mapping.Document;
++
++import java.time.LocalDateTime;
++import java.util.Date;
++
++@Data
++@NoArgsConstructor
++@Document(collection = "journal_entries")
++public class JournalEntry {
++
++    @Id
++    private ObjectId id;
++    @NonNull
++    private String title;
++    private String content;
++    private LocalDateTime entryDate;
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/entity/ConfigJournalAppEntity.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/entity/ConfigJournalAppEntity.java b/src/main/java/net/engineeringdigest/journalApp/entity/ConfigJournalAppEntity.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/entity/ConfigJournalAppEntity.java
+@@ -0,0 +1,20 @@
++package net.engineeringdigest.journalApp.entity;
++
++import lombok.Data;
++import lombok.NoArgsConstructor;
++import lombok.NonNull;
++import org.bson.types.ObjectId;
++import org.springframework.data.annotation.Id;
++import org.springframework.data.mongodb.core.mapping.Document;
++
++import java.time.LocalDateTime;
++
++@Document(collection = "config_journal_app")
++@Data
++@NoArgsConstructor
++public class ConfigJournalAppEntity {
++
++    private String key;
++    private String value;
++
++}
+\ No newline at end of file
+Index: src/main/java/net/engineeringdigest/journalApp/service/EmailService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/EmailService.java b/src/main/java/net/engineeringdigest/journalApp/service/EmailService.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/EmailService.java
+@@ -0,0 +1,33 @@
++//package net.engineeringdigest.journalApp.service;
++//
++//
++//import lombok.extern.slf4j.Slf4j;
++//import org.springframework.beans.factory.annotation.Autowired;
++//import org.springframework.mail.SimpleMailMessage;
++//import org.springframework.mail.javamail.JavaMailSender;
++//import org.springframework.stereotype.Service;
++//
++//@Service
++//@Slf4j
++//public class EmailService {
++//
++//    @Autowired
++//    JavaMailSender javaMailSender;
++//
++//    public void sendEmail(String to, String subject, String text) {
++//        try {
++//            SimpleMailMessage message = new SimpleMailMessage();
++//            message.setTo(to);
++//            message.setSubject(subject);
++//            message.setText(text);
++//            javaMailSender.send(message);
++//        }
++//        catch (Exception e) {
++//            log.error("Exception while sending mail", e);
++//        }
++//
++//    }
++//
++//
++//
++//}
+Index: src/main/java/net/engineeringdigest/journalApp/service/RedisService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/RedisService.java b/src/main/java/net/engineeringdigest/journalApp/service/RedisService.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/RedisService.java
+@@ -0,0 +1,44 @@
++package net.engineeringdigest.journalApp.service;
++
++import com.fasterxml.jackson.databind.ObjectMapper;
++import lombok.extern.slf4j.Slf4j;
++import net.engineeringdigest.journalApp.api.response.WeatherResponse;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.data.redis.core.RedisTemplate;
++import org.springframework.stereotype.Service;
++
++import java.util.concurrent.TimeUnit;
++
++@Service
++@Slf4j
++public class RedisService {
++
++    @Autowired
++    RedisTemplate redisTemplate;
++
++    public <T> T get(String key, Class<T> entityClass){
++        try {
++            Object o = redisTemplate.opsForValue().get(key);
++            ObjectMapper mapper = new ObjectMapper();
++            return mapper.readValue(o.toString(), entityClass);
++        }
++        catch(Exception e){
++            log.error(e.getMessage());
++            return null;
++
++        }
++    }
++
++    public void set(String key,Object value,Long ttl){
++        try {
++            ObjectMapper objectMapper = new ObjectMapper();
++            String jsonValue = objectMapper.writeValueAsString(value);
++            redisTemplate.opsForValue().set(key, jsonValue, ttl, TimeUnit.SECONDS);
++        } catch (Exception e) {
++            log.error("Exception ", e);
++        }
++    }
++
++
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/service/WeatherService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/WeatherService.java b/src/main/java/net/engineeringdigest/journalApp/service/WeatherService.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/WeatherService.java
+@@ -0,0 +1,54 @@
++package net.engineeringdigest.journalApp.service;
++
++
++import net.engineeringdigest.journalApp.api.response.WeatherResponse;
++import net.engineeringdigest.journalApp.cache.AppCache;
++import net.engineeringdigest.journalApp.constants.Placeholders;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.http.HttpMethod;
++import org.springframework.http.ResponseEntity;
++import org.springframework.stereotype.Component;
++import org.springframework.stereotype.Service;
++import org.springframework.web.client.RestTemplate;
++
++import javax.annotation.PostConstruct;
++
++@Service
++public class WeatherService {
++    @Value("${weather.api.key}")
++    private String apiKey;
++
++    @Autowired
++    private RestTemplate restTemplate;
++
++    @Autowired
++    AppCache appCache;
++
++    @Autowired
++    private RedisService redisService;
++
++    @PostConstruct
++    public void debug() {
++        System.out.println("API KEY = " + apiKey);
++        System.out.println("WEATHER_API = " +
++                appCache.appCache.get(AppCache.keys.WEATHER_API.toString()));
++    }
++
++    public WeatherResponse getWeather(String city) {
++        WeatherResponse weatherResponse = redisService.get("weather_of_" + city, WeatherResponse.class);
++        if (weatherResponse != null) {
++            return weatherResponse;
++        } else {
++            String finalAPI = appCache.appCache.get(AppCache.keys.WEATHER_API.toString()).replace(Placeholders.CITY, city).replace(Placeholders.API_KEY, apiKey);
++            ResponseEntity<WeatherResponse> response = restTemplate.exchange(finalAPI, HttpMethod.POST, null, WeatherResponse.class);
++            WeatherResponse body = response.getBody();
++            if (body != null) {
++                redisService.set("weather_of_" + city, body, 300l);
++            }
++            return body;
++        }
++
++    }
++}
++
+Index: src/main/java/net/engineeringdigest/journalApp/service/UserEntryService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/UserEntryService.java b/src/main/java/net/engineeringdigest/journalApp/service/UserEntryService.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/UserEntryService.java
+@@ -0,0 +1,68 @@
++package net.engineeringdigest.journalApp.service;
++
++import lombok.extern.slf4j.Slf4j;
++import net.engineeringdigest.journalApp.Repository.UserRepo;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.bson.types.ObjectId;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
++import org.springframework.security.crypto.password.PasswordEncoder;
++import org.springframework.stereotype.Component;
++
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.List;
++import java.util.Optional;
++
++@Component
++@Slf4j
++public class UserEntryService {
++
++    @Autowired
++    private UserRepo userRepo;
++
++    private static final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
++
++    public List<Users> getAllUsers() {
++        return userRepo.findAll();
++    }
++
++    public boolean saveNewUser(Users user) {
++        try {
++            user.setPassword(passwordEncoder.encode(user.getPassword()));
++            user.setRoles(Arrays.asList("USER"));
++            userRepo.save(user);
++            return true;
++        }
++        catch (Exception e) {
++            log.info("User entry save failed",e);
++            return false;
++        }
++
++    }
++
++    public void saveAdmin(Users user) {
++        user.setPassword(passwordEncoder.encode(user.getPassword()));
++        user.setRoles(Arrays.asList("USER", "ADMIN"));
++        userRepo.save(user);
++    }
++
++    public void saveUser(Users user) {
++        userRepo.save(user);
++    }
++
++    public Optional<Users> getUserById(ObjectId id) {
++        return userRepo.findById(id);
++    }
++
++    public void deleteUserById(ObjectId id) {
++        userRepo.deleteById(id);
++
++    }
++
++    public Users getUserByUserName(String userName) {
++        return userRepo.findByUserName(userName);
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/service/JournalEntryService.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/JournalEntryService.java b/src/main/java/net/engineeringdigest/journalApp/service/JournalEntryService.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/JournalEntryService.java
+@@ -0,0 +1,90 @@
++package net.engineeringdigest.journalApp.service;
++
++import net.engineeringdigest.journalApp.Repository.JournalEntryRepo;
++import net.engineeringdigest.journalApp.entity.JournalEntry;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.bson.types.ObjectId;
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.autoconfigure.AutoConfigureOrder;
++import org.springframework.stereotype.Component;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++import org.springframework.web.client.HttpClientErrorException;
++
++import java.time.LocalDateTime;
++import java.util.List;
++import java.util.Optional;
++
++@Component
++public class JournalEntryService {
++
++    @Autowired
++    private JournalEntryRepo journalEntryRepo;
++
++    @Autowired
++    UserEntryService userEntryService;
++
++    private static  final Logger  logger = LoggerFactory.getLogger(JournalEntryService.class);
++
++    @Transactional
++    public void saveEntry(JournalEntry entry, String userName) {
++        try {
++            Users user = userEntryService.getUserByUserName(userName);
++            entry.setEntryDate(LocalDateTime.now());
++            JournalEntry saved = journalEntryRepo.save(entry);
++            user.getJournalEntry().add(saved);
++            userEntryService.saveUser(user);
++        }
++        catch (Exception e) {
++           logger.error(e.getMessage());
++            throw new RuntimeException(e.getMessage());
++        }
++    }
++
++    public void saveEntry(JournalEntry entry) {
++        journalEntryRepo.save(entry);
++    }
++
++    public List<JournalEntry> getEntries() {
++        return journalEntryRepo.findAll();
++    }
++
++    public Optional<JournalEntry> getEntriesByJournalId(ObjectId journalId) {
++        return journalEntryRepo.findById(journalId);
++    }
++
++    public void deleteEntry(ObjectId journalId) {
++        journalEntryRepo.deleteById(journalId);
++    }
++
++    public void deleteEntryForUserName(ObjectId journalId, String userName) {
++        Users user = userEntryService.getUserByUserName(userName);
++        user.getJournalEntry().removeIf(i -> user.getId().equals(journalId));
++        userEntryService.saveUser(user);
++        journalEntryRepo.deleteById(journalId);
++    }
++
++    public void updateEntry(JournalEntry entry) {
++        return;
++    }
++
++    @Transactional
++    public boolean deleteByJournalId(ObjectId journalId,String userName) {
++        boolean result = false;
++        try {
++            Users user = userEntryService.getUserByUserName(userName);
++            result = user.getJournalEntry().removeIf(i -> i.getId().equals(journalId));
++            if (result) {
++                userEntryService.saveUser(user);
++                journalEntryRepo.deleteById(journalId);
++            }
++        }
++        catch (Exception e) {
++            System.out.println(e.getMessage());
++            throw new RuntimeException(e.getMessage());
++        }
++        return result;
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/service/UserDetailServiceImpl.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/service/UserDetailServiceImpl.java b/src/main/java/net/engineeringdigest/journalApp/service/UserDetailServiceImpl.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/service/UserDetailServiceImpl.java
+@@ -0,0 +1,32 @@
++package net.engineeringdigest.journalApp.service;
++
++import net.engineeringdigest.journalApp.Repository.UserRepo;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.security.core.userdetails.User;
++import org.springframework.security.core.userdetails.UserDetails;
++import org.springframework.security.core.userdetails.UserDetailsService;
++import org.springframework.security.core.userdetails.UsernameNotFoundException;
++import org.springframework.stereotype.Component;
++
++@Component
++public class UserDetailServiceImpl implements UserDetailsService {
++
++    @Autowired
++    UserRepo userRepo;
++
++    @Override
++    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
++        Users user = userRepo.findByUserName(username);
++        if (null != user) {
++         UserDetails userDetails = User.builder().username(user.getUserName())
++                    .password(user.getPassword())
++                    .roles(user.getRoles().toArray(new String[0]))
++                    .build();
++
++         return userDetails;
++
++        }
++   throw  new UsernameNotFoundException("Username not found: " + username);
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/constants/Placeholders.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/constants/Placeholders.java b/src/main/java/net/engineeringdigest/journalApp/constants/Placeholders.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/constants/Placeholders.java
+@@ -0,0 +1,6 @@
++package net.engineeringdigest.journalApp.constants;
++
++public interface Placeholders {
++    String API_KEY = "<apiKey>";
++    String CITY = "<city>";
++}
+Index: src/main/java/net/engineeringdigest/journalApp/controller/UserController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/controller/UserController.java b/src/main/java/net/engineeringdigest/journalApp/controller/UserController.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/controller/UserController.java
+@@ -0,0 +1,74 @@
++package net.engineeringdigest.journalApp.controller;
++
++import net.engineeringdigest.journalApp.Repository.UserRepo;
++import net.engineeringdigest.journalApp.api.response.WeatherResponse;
++import net.engineeringdigest.journalApp.entity.Users;
++import net.engineeringdigest.journalApp.service.JournalEntryService;
++import net.engineeringdigest.journalApp.service.UserEntryService;
++import net.engineeringdigest.journalApp.service.WeatherService;
++import org.bson.types.ObjectId;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.Authentication;
++import org.springframework.security.core.context.SecurityContext;
++import org.springframework.security.core.context.SecurityContextHolder;
++import org.springframework.web.bind.annotation.*;
++
++import java.util.List;
++import java.util.Optional;
++
++@RestController
++@RequestMapping("/users")
++public class UserController {
++
++    @Autowired
++    private UserEntryService userEntryService;
++
++    @Autowired
++    private UserRepo userRepo;
++
++    @Autowired
++    private WeatherService weatherService;
++
++
++
++    @DeleteMapping("/userId")
++    public ResponseEntity<Users> deleteUsers(@RequestBody ObjectId id) {
++        userEntryService.deleteUserById(id);
++        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
++    }
++
++@PutMapping
++    public ResponseEntity<Users> updateUsers(@RequestBody Users users) {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++       String username = authentication.getName();
++        Users userInDb = userEntryService.getUserByUserName(username);
++            userInDb.setPassword(users.getPassword());
++            userInDb.setUserName(users.getUserName());
++            userEntryService.saveNewUser(userInDb);
++        return new ResponseEntity<>(users, HttpStatus.NO_CONTENT);
++
++
++    }
++
++    @DeleteMapping
++    public ResponseEntity<Users> deleteUser(@RequestBody ObjectId id) {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        String username = authentication.getName();
++        userRepo.deleteByUserName(username);
++        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
++    }
++
++    @GetMapping
++    public ResponseEntity<?> greeting() {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        WeatherResponse weatherResponse = weatherService.getWeather("Mumbai");
++        String greeting = "";
++        if (weatherResponse != null) {
++            greeting = ", Weather feels like " + weatherResponse.getCurrent().getFeelslike();
++        }
++        return new ResponseEntity<>("Hi " + authentication.getName() + greeting, HttpStatus.OK);
++    }
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/controller/AdminController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/controller/AdminController.java b/src/main/java/net/engineeringdigest/journalApp/controller/AdminController.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/controller/AdminController.java
+@@ -0,0 +1,32 @@
++package net.engineeringdigest.journalApp.controller;
++
++import net.engineeringdigest.journalApp.entity.Users;
++import net.engineeringdigest.journalApp.service.UserEntryService;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.*;
++
++import java.util.List;
++
++@RestController
++@RequestMapping("/admin")
++public class AdminController {
++
++    @Autowired
++    UserEntryService userEntryService;
++
++    @GetMapping("/all/users")
++    public ResponseEntity<?> getAllUsers() {
++        List<Users> allUsers = userEntryService.getAllUsers();
++        if (allUsers != null || !allUsers.isEmpty()) {
++            return new ResponseEntity<>(allUsers, HttpStatus.OK);
++        }
++        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
++    }
++
++    @PostMapping("/add/admin")
++    public void saveAdmin(@RequestBody Users user) {
++        userEntryService.saveAdmin(user);
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/controller/PublicController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/controller/PublicController.java b/src/main/java/net/engineeringdigest/journalApp/controller/PublicController.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/controller/PublicController.java
+@@ -0,0 +1,47 @@
++package net.engineeringdigest.journalApp.controller;
++
++import net.engineeringdigest.journalApp.entity.Users;
++import net.engineeringdigest.journalApp.service.UserEntryService;
++import org.bson.types.ObjectId;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.web.bind.annotation.*;
++
++import java.util.List;
++import java.util.Optional;
++
++@RestController
++@RequestMapping("/public")
++public class PublicController {
++
++    @Autowired
++    private UserEntryService userEntryService;
++
++    @GetMapping("/health-check")
++    public String healthCheck(){
++        return "OK";
++    }
++
++    @GetMapping
++    public ResponseEntity<List<Users>> getAllUsers() {
++        return new ResponseEntity<>(userEntryService.getAllUsers(), HttpStatus.OK);
++    }
++
++    @PostMapping("/create/user")
++    public ResponseEntity<Users> saveUsers(@RequestBody Users users) {
++        userEntryService.saveNewUser(users);
++        return new ResponseEntity<>(users, HttpStatus.CREATED);
++
++    }
++
++
++    @GetMapping("/userId")
++    public ResponseEntity<Users> getUsersByIds(@PathVariable ObjectId id) {
++        Optional<Users> users = userEntryService.getUserById(id);
++        if (users.isPresent()) {
++            return new ResponseEntity<>(users.get(), HttpStatus.OK);
++        }
++        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryController.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryController.java b/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryController.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryController.java
+@@ -0,0 +1,44 @@
++//package net.engineeringdigest.journalApp.controller;
++//
++//import net.engineeringdigest.journalApp.entity.JournalEntry;
++//import org.springframework.web.bind.annotation.*;
++//
++//import java.util.ArrayList;
++//import java.util.HashMap;
++//import java.util.List;
++//import java.util.Map;
++//
++//@RestController
++//@RequestMapping("/_journal")
++//public class JournalEntryController {
++//
++//    private Map<String,JournalEntry> map = new HashMap<>();
++//
++//    @GetMapping
++//    public List<JournalEntry> getJournalEntries() {
++//        return new ArrayList<>(map.values());
++//    }
++//
++//@PostMapping
++//    public boolean addJournalEntry(@RequestBody JournalEntry journalEntry) {
++//        map.put(journalEntry.getId(), journalEntry);
++//        return true;
++//    }
++//
++//    @GetMapping("entryId/{journalId}")
++//    public JournalEntry getJournalEntriesByJournalId(@PathVariable  Long journalId) {
++//        return map.get(journalId);
++//    }
++//
++//    @DeleteMapping("entryId/{journalId}")
++//    public boolean deleteJournalEntry(@PathVariable Long journalId) {
++//        return map.remove(journalId) != null;
++//    }
++//
++//    @PutMapping("entryId/{journalId}")
++//    public JournalEntry updateJournalEntryByJournalId(@PathVariable String journalId, @RequestBody JournalEntry journalEntry) {
++//     return map.put(journalId, journalEntry);
++//    }
++//
++//
++//}
+Index: src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryControllerReplica.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryControllerReplica.java b/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryControllerReplica.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/controller/JournalEntryControllerReplica.java
+@@ -0,0 +1,110 @@
++package net.engineeringdigest.journalApp.controller;
++
++import lombok.extern.slf4j.Slf4j;
++import net.engineeringdigest.journalApp.Repository.JournalEntryRepo;
++import net.engineeringdigest.journalApp.entity.JournalEntry;
++import net.engineeringdigest.journalApp.entity.Users;
++import net.engineeringdigest.journalApp.service.JournalEntryService;
++import net.engineeringdigest.journalApp.service.UserEntryService;
++import org.bson.types.ObjectId;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.ResponseEntity;
++import org.springframework.security.core.Authentication;
++import org.springframework.security.core.context.SecurityContextHolder;
++import org.springframework.web.bind.annotation.*;
++
++import java.time.LocalDateTime;
++import java.util.ArrayList;
++import java.util.List;
++import java.util.Optional;
++import java.util.stream.Collectors;
++
++@RestController
++@Slf4j
++@RequestMapping("/journal")
++public class JournalEntryControllerReplica {
++
++    @Autowired
++    private JournalEntryService journalEntryService;
++
++    @Autowired
++    private UserEntryService userEntryService;
++
++    @GetMapping
++    public ResponseEntity<List<JournalEntry>> getJournalEntriesForUser() {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        String userName = authentication.getName();
++        Users user = userEntryService.getUserByUserName(userName);
++        List<JournalEntry> journalEntries = user.getJournalEntry();
++        if (journalEntries != null && !journalEntries.isEmpty()) {
++            return new ResponseEntity<>(journalEntries, HttpStatus.OK);
++
++        }
++        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
++    }
++
++    @PostMapping
++    public ResponseEntity<JournalEntry> addJournalEntryByUserName(@RequestBody JournalEntry journalEntry) {
++        try {
++            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++            String userName = authentication.getName();
++            journalEntryService.saveEntry(journalEntry, userName);
++            return new ResponseEntity<>(journalEntry, HttpStatus.CREATED);
++        } catch (Exception e) {
++            log.info("Journal entry save failed",e);
++            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
++        }
++    }
++
++    @GetMapping("entryId/{journalId}")
++    public ResponseEntity<JournalEntry> getJournalEntriesByJournalId(@PathVariable ObjectId journalId) {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        String userName = authentication.getName();
++        Users user = userEntryService.getUserByUserName(userName);
++        List<JournalEntry> collect = user.getJournalEntry().stream().filter(j -> j.getId().equals(journalId)).collect(Collectors.toList());
++        if (!collect.isEmpty()) {
++            Optional<JournalEntry> journalEntry = journalEntryService.getEntriesByJournalId(journalId);
++            if (journalEntry.isPresent()) {
++                return new ResponseEntity<>(journalEntry.get(), HttpStatus.OK);
++            }
++        }
++        return ResponseEntity.notFound().build();
++
++    }
++
++    @DeleteMapping("entryId/{journalId}")
++    public ResponseEntity<?> deleteJournalEntry(@PathVariable ObjectId journalId) {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        String userName = authentication.getName();
++        boolean deleted = journalEntryService.deleteByJournalId(journalId, userName);
++        if (deleted) {
++            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
++        }
++        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
++
++
++    }
++
++
++    @PutMapping("entryId/{journalId}")
++    public ResponseEntity<?> updateJournalEntryByJournalId(@PathVariable ObjectId journalId,
++                                                           @RequestBody JournalEntry newJournalEntry) {
++        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
++        String userName = authentication.getName();
++        Users user = userEntryService.getUserByUserName(userName);
++        List<JournalEntry> collect = user.getJournalEntry().stream().filter(j -> j.getId().equals(journalId)).collect(Collectors.toList());
++        if (!collect.isEmpty()) {
++            Optional<JournalEntry> journalEntry = journalEntryService.getEntriesByJournalId(journalId);
++            if (journalEntry.isPresent()) {
++                JournalEntry oldEntry = journalEntry.get();
++                oldEntry.setTitle(newJournalEntry.getTitle() != null && !newJournalEntry.getTitle().equals(" ") ? newJournalEntry.getTitle() : oldEntry.getTitle());
++                oldEntry.setContent(oldEntry.getContent() != null && !newJournalEntry.getContent().equals(" ") ? newJournalEntry.getContent() : oldEntry.getContent());
++                journalEntryService.saveEntry(oldEntry);
++                return new ResponseEntity<>(HttpStatus.OK);
++            }
++        }
++        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
++
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/Repository/UserRepo.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepo.java b/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepo.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepo.java
+@@ -0,0 +1,12 @@
++package net.engineeringdigest.journalApp.Repository;
++
++import net.engineeringdigest.journalApp.entity.JournalEntry;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.bson.types.ObjectId;
++import org.springframework.data.mongodb.repository.MongoRepository;
++
++public interface UserRepo extends MongoRepository<Users, ObjectId> {
++    Users findByUserName(String userName);
++
++    void deleteByUserName(String userName);
++}
+Index: src/main/java/net/engineeringdigest/journalApp/Repository/JournalEntryRepo.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/Repository/JournalEntryRepo.java b/src/main/java/net/engineeringdigest/journalApp/Repository/JournalEntryRepo.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/Repository/JournalEntryRepo.java
+@@ -0,0 +1,10 @@
++package net.engineeringdigest.journalApp.Repository;
++
++import net.engineeringdigest.journalApp.entity.JournalEntry;
++import org.bson.types.ObjectId;
++import org.springframework.data.mongodb.repository.MongoRepository;
++
++public interface JournalEntryRepo extends MongoRepository<JournalEntry, ObjectId> {
++
++
++}
+Index: src/main/java/net/engineeringdigest/journalApp/Repository/UserRepositoryImpl.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepositoryImpl.java b/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepositoryImpl.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/Repository/UserRepositoryImpl.java
+@@ -0,0 +1,28 @@
++package net.engineeringdigest.journalApp.Repository;
++
++import net.engineeringdigest.journalApp.entity.Users;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.data.mongodb.core.MongoTemplate;
++import org.springframework.data.mongodb.core.query.Criteria;
++import org.springframework.data.mongodb.core.query.Query;
++import org.springframework.stereotype.Component;
++
++import java.util.List;
++
++@Component
++public class UserRepositoryImpl {
++
++    @Autowired
++    private MongoTemplate mongoTemplate;
++
++    public List<Users> getUsersForSa() {
++        Query query = new Query();
++        Criteria criteria = new Criteria();
++        query.addCriteria(criteria.orOperator(Criteria.where("email").regex("/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$/"),
++                Criteria.where("sentimentAnalysis").is(true)));
++
++        List<Users> users = mongoTemplate.find(query, Users.class);
++        return users;
++
++    }
++}
+Index: src/main/java/net/engineeringdigest/journalApp/Repository/ConfigJournalAppRepository.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/Repository/ConfigJournalAppRepository.java b/src/main/java/net/engineeringdigest/journalApp/Repository/ConfigJournalAppRepository.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/net/engineeringdigest/journalApp/Repository/ConfigJournalAppRepository.java
+@@ -0,0 +1,8 @@
++package net.engineeringdigest.journalApp.Repository;
++
++import net.engineeringdigest.journalApp.entity.ConfigJournalAppEntity;
++import org.bson.types.ObjectId;
++import org.springframework.data.mongodb.repository.MongoRepository;
++
++public interface ConfigJournalAppRepository extends MongoRepository<ConfigJournalAppEntity, ObjectId> {
++}
+Index: src/main/java/net/engineeringdigest/journalApp/JournalApplication.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/java/net/engineeringdigest/journalApp/JournalApplication.java b/src/main/java/net/engineeringdigest/journalApp/JournalApplication.java
+--- a/src/main/java/net/engineeringdigest/journalApp/JournalApplication.java
++++ b/src/main/java/net/engineeringdigest/journalApp/JournalApplication.java
+@@ -3,13 +3,30 @@
+ 
+ import org.springframework.boot.SpringApplication;
+ import org.springframework.boot.autoconfigure.SpringBootApplication;
++import org.springframework.context.annotation.Bean;
++import org.springframework.data.mongodb.MongoDatabaseFactory;
++import org.springframework.data.mongodb.MongoTransactionManager;
++import org.springframework.transaction.PlatformTransactionManager;
++import org.springframework.transaction.annotation.EnableTransactionManagement;
++import org.springframework.web.client.RestTemplate;
+ 
+ @SpringBootApplication
++@EnableTransactionManagement
+ public class JournalApplication {
+ 
+     public static void main(String[] args) {
+         SpringApplication.run(JournalApplication.class, args);
+     }
+ 
++    @Bean
++    public PlatformTransactionManager addTransactionManager(MongoDatabaseFactory dbFactory) {
++        return new MongoTransactionManager(dbFactory);
++    }
++
++    @Bean
++    public RestTemplate restTemplate() {
++        return new RestTemplate();
++    }
++
+ 
+ }
+\ No newline at end of file
+Index: src/main/resources/application.yml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/main/resources/application.yml b/src/main/resources/application.yml
+new file mode 100644
+--- /dev/null
++++ b/src/main/resources/application.yml
+@@ -0,0 +1,31 @@
++weather:
++  api:
++    key: 091e786aac0e695b3b85b47b93bccd1d
++
++spring:
++  redis:
++    port: 6379
++    host: localhost
++  data:
++    mongodb:
++      database: journalDb
++      uri: mongodb+srv://yaduvanshier05_db_user:U9ua1EwDr2KT9Hja@cluster0.gcd9hnb.mongodb.net/?appName=Cluster0
++      auto-index-creation: true
++
++mail:
++  host: smtp.gmail.com
++  port: 587
++  username: yaduvanshier05@gmail.com
++  password: ocntvkdjusawccfv   # App Password (no spaces)
++
++  properties:
++    mail:
++      smtp:
++        auth: true
++        starttls:
++          enable: true
++
++server:
++  port: 8082
++  servlet:
++    context-path: /journal
+\ No newline at end of file
+Index: src/test/java/net/engineeringdigest/journalApp/service/RedisTests.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/net/engineeringdigest/journalApp/service/RedisTests.java b/src/test/java/net/engineeringdigest/journalApp/service/RedisTests.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/net/engineeringdigest/journalApp/service/RedisTests.java
+@@ -0,0 +1,25 @@
++package net.engineeringdigest.journalApp.service;
++
++
++import org.junit.jupiter.api.Disabled;
++import org.junit.jupiter.api.Test;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.data.redis.core.RedisTemplate;
++
++@SpringBootTest
++public class RedisTests {
++
++    @Autowired
++    private RedisTemplate redisTemplate;
++
++    @Disabled
++    @Test
++    void testSend() {
++       redisTemplate.opsForValue().set("email", "test@gmail.com");
++
++        Object salary = redisTemplate.opsForValue().get("salary");
++        int a = 1;
++
++    }
++}
+Index: src/test/java/net/engineeringdigest/journalApp/service/EmailServiceTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/net/engineeringdigest/journalApp/service/EmailServiceTest.java b/src/test/java/net/engineeringdigest/journalApp/service/EmailServiceTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/net/engineeringdigest/journalApp/service/EmailServiceTest.java
+@@ -0,0 +1,28 @@
++//package net.engineeringdigest.journalApp.service;
++//
++//import org.junit.jupiter.api.Test;
++//import org.junit.jupiter.api.extension.ExtendWith;
++//import org.springframework.beans.factory.annotation.Autowired;
++//import org.springframework.boot.test.mock.mockito.MockBean;
++//import org.springframework.context.annotation.Import;
++//import org.springframework.mail.javamail.JavaMailSender;
++//import org.springframework.test.context.junit.jupiter.SpringExtension;
++//
++//@ExtendWith(SpringExtension.class)
++//@Import(EmailService.class)
++//class EmailServiceTest {
++//
++//    @Autowired
++//    private EmailService emailService;
++//
++//    @MockBean
++//    private JavaMailSender mailSender;
++//
++//    @Test
++//     void testSendEmail() {
++//        emailService.sendEmail("tes@gmail.com",
++//                "Testing java mail sender",
++//                "Hi! How r u");
++//    }
++//
++//}
+Index: src/test/java/net/engineeringdigest/journalApp/service/UserEntryServiceTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/net/engineeringdigest/journalApp/service/UserEntryServiceTest.java b/src/test/java/net/engineeringdigest/journalApp/service/UserEntryServiceTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/net/engineeringdigest/journalApp/service/UserEntryServiceTest.java
+@@ -0,0 +1,47 @@
++package net.engineeringdigest.journalApp.service;
++
++import net.engineeringdigest.journalApp.Repository.UserRepo;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.junit.jupiter.api.Assertions;
++import org.junit.jupiter.api.Disabled;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.CsvSource;
++import org.junit.jupiter.params.provider.ValueSource;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.stereotype.Service;
++import org.springframework.web.bind.annotation.RequestBody;
++
++@SpringBootTest
++public class UserEntryServiceTest {
++
++    @Autowired
++    private  UserRepo userRepo;
++
++    @Autowired
++     private UserEntryService userEntryService;
++
++    @ParameterizedTest
++    @ValueSource(strings = {
++            "Ishaan",
++            "Kishan"
++    })
++    public void testFindUserByUserName(String name) {
++        Assertions.assertNotNull(userRepo.findByUserName(name));
++
++    }
++
++    @Disabled
++    @ParameterizedTest
++    @CsvSource({
++            "1,1,2",
++            "2,10,12",
++            "3,4,8"
++
++    })
++    public void test(int a,int b, int expected){
++        Assertions.assertEquals(expected,a+b);
++    }
++}
+Index: src/test/java/net/engineeringdigest/journalApp/service/UserDetailServiceImplTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/net/engineeringdigest/journalApp/service/UserDetailServiceImplTest.java b/src/test/java/net/engineeringdigest/journalApp/service/UserDetailServiceImplTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/net/engineeringdigest/journalApp/service/UserDetailServiceImplTest.java
+@@ -0,0 +1,33 @@
++package net.engineeringdigest.journalApp.service;
++
++import net.engineeringdigest.journalApp.Repository.UserRepo;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++import org.mockito.InjectMocks;
++import org.mockito.Mock;
++import org.mockito.MockitoAnnotations;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.context.annotation.Bean;
++import org.springframework.security.core.userdetails.UserDetails;
++import static org.mockito.Mockito.*;
++
++public class UserDetailServiceImplTest {
++
++    @InjectMocks
++    private UserDetailServiceImpl userDetailService;
++
++    @Mock
++    private UserRepo userRepo;
++
++    @BeforeEach
++    public void setUp() {
++        MockitoAnnotations.initMocks(this);
++    }
++
++    @Test
++    void loadUserByUserNameTest(){
++        UserDetails test = userDetailService.loadUserByUsername("test");
++
++    }
++}
+Index: src/test/java/net/engineeringdigest/journalApp/repository/UserRepositoryImplTest.java
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/src/test/java/net/engineeringdigest/journalApp/repository/UserRepositoryImplTest.java b/src/test/java/net/engineeringdigest/journalApp/repository/UserRepositoryImplTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/net/engineeringdigest/journalApp/repository/UserRepositoryImplTest.java
+@@ -0,0 +1,29 @@
++package net.engineeringdigest.journalApp.repository;
++
++
++import net.engineeringdigest.journalApp.Repository.UserRepositoryImpl;
++import net.engineeringdigest.journalApp.entity.Users;
++import org.apache.catalina.User;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++import org.mockito.InjectMocks;
++import org.mockito.MockitoAnnotations;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.boot.test.context.SpringBootTest;
++import org.springframework.data.mongodb.core.index.Indexed;
++
++import java.util.List;
++
++@SpringBootTest
++public class UserRepositoryImplTest {
++
++    @Autowired
++    private UserRepositoryImpl userRepository;
++
++
++    @Test
++    public void getUser() {
++        userRepository.getUsersForSa();
++    }
++
++}
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+new file mode 100644
+--- /dev/null
++++ b/.idea/misc.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="ExternalStorageConfigurationManager" enabled="true" />
++  <component name="MavenProjectsManager">
++    <option name="originalFiles">
++      <list>
++        <option value="$PROJECT_DIR$/pom.xml" />
++      </list>
++    </option>
++  </component>
++  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="17" project-jdk-type="JavaSDK" />
++</project>
+\ No newline at end of file
+Index: .idea/.gitignore
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/.gitignore b/.idea/.gitignore
+new file mode 100644
+--- /dev/null
++++ b/.idea/.gitignore
+@@ -0,0 +1,8 @@
++# Default ignored files
++/shelf/
++/workspace.xml
++# Editor-based HTTP Client requests
++/httpRequests/
++# Datasource local storage ignored files
++/dataSources/
++/dataSources.local.xml
+Index: .idea/compiler.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/compiler.xml b/.idea/compiler.xml
+new file mode 100644
+--- /dev/null
++++ b/.idea/compiler.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="CompilerConfiguration">
++    <annotationProcessing>
++      <profile default="true" name="Default" enabled="true" />
++      <profile name="Maven default annotation processors profile" enabled="true">
++        <sourceOutputDir name="target/generated-sources/annotations" />
++        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
++        <outputRelativeToContentRoot value="true" />
++        <module name="journalApp" />
++      </profile>
++    </annotationProcessing>
++  </component>
++  <component name="JavacSettings">
++    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
++      <module name="journalApp" options="-parameters" />
++    </option>
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/encodings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/encodings.xml b/.idea/encodings.xml
+new file mode 100644
+--- /dev/null
++++ b/.idea/encodings.xml
+@@ -0,0 +1,6 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="Encoding">
++    <file url="file://$PROJECT_DIR$/src/main/java" charset="UTF-8" />
++  </component>
++</project>
+\ No newline at end of file
+Index: .idea/jarRepositories.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/jarRepositories.xml b/.idea/jarRepositories.xml
+new file mode 100644
+--- /dev/null
++++ b/.idea/jarRepositories.xml
+@@ -0,0 +1,20 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<project version="4">
++  <component name="RemoteRepositoriesConfiguration">
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Central Repository" />
++      <option name="url" value="https://repo.maven.apache.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="central" />
++      <option name="name" value="Maven Central repository" />
++      <option name="url" value="https://repo1.maven.org/maven2" />
++    </remote-repository>
++    <remote-repository>
++      <option name="id" value="jboss.community" />
++      <option name="name" value="JBoss Community repository" />
++      <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
++    </remote-repository>
++  </component>
++</project>
+\ No newline at end of file
+Index: pom.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/pom.xml b/pom.xml
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,40 +1,66 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+-	<modelVersion>4.0.0</modelVersion>
+-	<parent>
+-		<groupId>org.springframework.boot</groupId>
+-		<artifactId>spring-boot-starter-parent</artifactId>
+-		<version>2.7.16</version>
+-		<relativePath/>
+-	</parent>
+-	<groupId>net.engineeringdigest</groupId>
+-	<artifactId>journalApp</artifactId>
+-	<version>0.0.1-SNAPSHOT</version>
+-	<name>Journal App</name>
+-	<description>E2EE Journal App</description>
+-	<properties>
+-		<java.version>1.8</java.version>
+-	</properties>
+-	<dependencies>
+-		<dependency>
+-			<groupId>org.springframework.boot</groupId>
+-			<artifactId>spring-boot-starter-web</artifactId>
+-		</dependency>
++         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
++    <modelVersion>4.0.0</modelVersion>
++    <parent>
++        <groupId>org.springframework.boot</groupId>
++        <artifactId>spring-boot-starter-parent</artifactId>
++        <version>2.7.16</version>
++        <relativePath/>
++    </parent>
++    <groupId>net.engineeringdigest</groupId>
++    <artifactId>journalApp</artifactId>
++    <version>0.0.1-SNAPSHOT</version>
++    <name>Journal App</name>
++    <description>E2EE Journal App</description>
++    <properties>
++        <java.version>1.8</java.version>
++    </properties>
++    <dependencies>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-web</artifactId>
++        </dependency>
+         <dependency>
+-			<groupId>org.springframework.boot</groupId>
+-			<artifactId>spring-boot-starter-test</artifactId>
+-			<scope>test</scope>
+-		</dependency>
+-	</dependencies>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-test</artifactId>
++            <scope>test</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-mongodb</artifactId>
++        </dependency>
++
++        <dependency>
++            <groupId>org.projectlombok</groupId>
++            <artifactId>lombok</artifactId>
++            <version>1.18.30</version>
++            <scope>provided</scope>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-security</artifactId>
++        </dependency>
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-data-redis</artifactId>
++        </dependency>
++
++        <dependency>
++            <groupId>org.springframework.boot</groupId>
++            <artifactId>spring-boot-starter-mail</artifactId>
++        </dependency>
++
++
++    </dependencies>
+ 
+-	<build>
+-		<plugins>
+-			<plugin>
+-				<groupId>org.springframework.boot</groupId>
+-				<artifactId>spring-boot-maven-plugin</artifactId>
+-			</plugin>
+-		</plugins>
+-	</build>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.springframework.boot</groupId>
++                <artifactId>spring-boot-maven-plugin</artifactId>
++            </plugin>
++        </plugins>
++    </build>
+ 
+ </project>
+diff --git a/src/main/resources/application.properties b/src/main/resources/application.properties
+deleted file mode 100644
